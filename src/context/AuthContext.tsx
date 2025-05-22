@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { toast } from "sonner";
+import { setDatadogUser } from "@/utils/datadog";
 
 type AuthContextType = {
   user: User | null;
@@ -31,12 +32,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(currentSession?.user ?? null);
         
         if (event === "SIGNED_IN" && currentSession) {
+          // Track user in Datadog
+          try {
+            const userData = currentSession.user?.user_metadata;
+            const name = userData?.name || 'Unknown User';
+            const email = currentSession.user?.email || 'unknown@example.com';
+            setDatadogUser(currentSession.user?.id || 'anonymous', name, email);
+          } catch (error) {
+            console.warn('Failed to set Datadog user:', error);
+            // Continue with sign-in process even if Datadog fails
+          }
+          
           toast.success("Signed in successfully");
           setTimeout(() => {
             navigate("/");
           }, 0);
         }
         if (event === "SIGNED_OUT") {
+          // Reset Datadog user to anonymous
+          try {
+            setDatadogUser('anonymous', 'Anonymous User', 'anonymous@example.com');
+          } catch (error) {
+            console.warn('Failed to reset Datadog user:', error);
+            // Continue with sign-out process even if Datadog fails
+          }
+          
           toast.info("Signed out");
           setTimeout(() => {
             navigate("/login");
