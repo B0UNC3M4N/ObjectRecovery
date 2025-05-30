@@ -68,9 +68,9 @@ COPY --from=build /usr/src/app/dist ./dist
 # Expose the port that the application listens on.
 EXPOSE 8080
 
-# Install serve as root, specifying npm global prefix to a writable location.
+# Install serve as root, using --unsafe-perm to avoid permission issues in Alpine.
 USER root
-RUN npm install -g serve --prefix /usr/local
+RUN npm install -g serve --unsafe-perm
 USER node
 
 CMD ["serve", "-s", "dist", "-l", "8080"]
