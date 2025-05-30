@@ -1,4 +1,4 @@
-name: CI/CD & Docker Deploy
+name: Build and Publish Docker Image
 
 on:
   push:
@@ -7,8 +7,11 @@ on:
     branches: [main]
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
     steps:
       - name: Checkout code
@@ -17,32 +20,37 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '22.x'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build app
+      - name: Run tests
+        run: npm test
+        continue-on-error: true # Remove or set to false if you want to fail on test errors
+
+      - name: Build project
         run: npm run build
 
-      # Uncomment if you have tests
-      # - name: Run tests
-      #   run: npm test
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Log in to DockerHub
+      - name: Log in to Docker Hub
+        if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/object-recovery:latest
+          file: Dockerfile
+          push: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
+          tags: ${{ env.DOCKERHUB_USERNAME && format('{0}/object-recovery:latest', env.DOCKERHUB_USERNAME) }}
 
-      # Optionally, deploy to your server here (e.g., SSH, Kubernetes, etc.)
-      # - name: Deploy to server
-      #   run: |
-      #     ssh user@your-server 'docker pull ... && docker restart ...'
+      - name: Warn about line endings (optional)
+        run: |
+          echo "::warning file=Dockerfile::If you see 'LF will be replaced by CRLF', it's a Git line ending warning. It does not affect Docker builds. On Windows, to avoid this warning, run:"
+          echo "    git config --global core.autocrlf input"

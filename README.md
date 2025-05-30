@@ -134,4 +134,30 @@ The application automatically tracks user information in Datadog when users sign
 - User journey analysis
 - Performance monitoring by user segment
 
+---
+
+## How to Verify Docker and GitHub Actions
+
+### Docker
+
+- **Build locally:**  
+  Run `docker build -t object-recovery:local .`  
+  If the build completes without errors, Docker is working.
+- **Run locally:**  
+  Run `docker run -p 8080:8080 object-recovery:local`  
+  Visit [http://localhost:8080](http://localhost:8080) in your browser to see your app running in Docker.
+
+### GitHub Actions
+
+- **Check build status:**  
+  Go to your repository on GitHub.  
+  Click on the "Actions" tab.  
+  You should see workflow runs for your recent pushes and pull requests.
+- **See logs:**  
+  Click on a workflow run to view detailed logs for each step (checkout, build, Docker build, etc.).
+- **Docker image push:**  
+  If you have set up Docker Hub secrets, check your Docker Hub account for the `object-recovery:latest` image after a successful workflow run.
+
+If you see green check marks and successful logs in GitHub Actions, and your Docker image builds and runs locally, both integrations are working.
+
 
