@@ -1,0 +1,71 @@
+---
+# Datadog Agent Configuration for Object Recovery Application
+
+# General settings
+api_key: ${DD_API_KEY}
+site: ${DD_SITE}
+env: ${DD_ENV}
+tags:
+  - app:object-recovery
+  - env:${DD_ENV}
+  - service:${DD_SERVICE}
+
+# APM configuration
+apm_config:
+  enabled: true
+  log_file: /var/log/datadog/trace-agent.log
+  apm_non_local_traffic: true
+  max_traces_per_second: 100
+  max_events_per_second: 200
+  env: ${DD_ENV}
+
+# Logs configuration
+logs_enabled: true
+logs_config:
+  container_collect_all: true
+  logs_dd_url: ${DD_LOGS_INTAKE_URL}
+  logs_no_ssl: false
+  use_http: true
+  use_compression: true
+  compression_level: 6
+
+# Browser logs and RUM configuration
+# Note: This is for reference only. Browser RUM is configured client-side.
+rum:
+  application_id: ${VITE_DATADOG_APPLICATION_ID}
+  client_token: ${VITE_DATADOG_CLIENT_TOKEN}
+  site: ${VITE_DATADOG_SITE}
+  service: ${DD_SERVICE}
+  env: ${DD_ENV}
+  version: ${VITE_APP_VERSION}
+  session_sample_rate: 100
+  session_replay_sample_rate: 20
+
+# Process monitoring
+process_config:
+  enabled: true
+  process_collection_enabled: true
+
+# Infrastructure monitoring
+# Adjust based on your deployment environment (Docker, Kubernetes, etc.)
+listeners:
+  - name: docker
+docker_labels_as_tags:
+  com.docker.compose.service: service
+  com.docker.compose.project: project
+kubernetes_pod_labels_as_tags:
+  app: kube_app
+  release: kube_release
+
+# Additional integrations
+# Uncomment and configure as needed for your stack
+# integrations:
+#   nginx:
+#     init_config:
+#     instances:
+#       - nginx_status_url: http://localhost:8080/nginx_status
+#   redis:
+#     init_config:
+#     instances:
+#       - host: localhost
+#         port: 6379
