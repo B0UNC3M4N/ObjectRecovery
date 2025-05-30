@@ -100,7 +100,7 @@ COPY --from=build /usr/src/app/dist ./dist
 # Expose the port that the application listens on.
 EXPOSE 8080
 
-# Set up a local directory for global npm modules (no root required yy)
+# Set up a local directory for global npm modules (no root required)
 ENV NPM_GLOBAL_DIR=/home/node/npm-global
 RUN mkdir -p "$NPM_GLOBAL_DIR" && \
     npm config set prefix "$NPM_GLOBAL_DIR" && \
