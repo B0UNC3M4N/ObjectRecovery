@@ -1,12 +1,10 @@
 # syntax=docker/dockerfile:1
 
-# Comments are provided throughout this file to help you get started.
-# If you need more help, visit the Dockerfile reference guide at
-# https://docs.docker.com/go/dockerfile-reference/
+# Object Recovery Application Dockerfile
+# Includes Datadog monitoring integration
 
-# Want to help us make this template better? Share your feedback here: https://forms.gle/ybq9Krt8jtBL3iCk7
-
-ARG NODE_VERSION=22.14.0
+# Use a more stable LTS version of Node
+ARG NODE_VERSION=20.12.1
 
 ################################################################################
 # Use node image for base image for all stages.
@@ -15,9 +13,11 @@ FROM node:${NODE_VERSION}-alpine as base
 # Set working directory for all build stages.
 WORKDIR /usr/src/app
 
+# Install Datadog dependencies
+RUN apk add --no-cache curl
 
 ################################################################################
-# Create a stage for installing production dependecies.
+# Create a stage for installing production dependencies.
 FROM base as deps
 
 # Download dependencies as a separate step to take advantage of Docker's caching.
@@ -33,8 +33,24 @@ RUN --mount=type=bind,source=package.json,target=package.json \
 # Create a stage for building the application.
 FROM deps as build
 
+# Define build arguments for environment variables
+ARG VITE_DATADOG_APPLICATION_ID
+ARG VITE_DATADOG_CLIENT_TOKEN
+ARG VITE_DATADOG_SITE
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+ARG VITE_APP_VERSION
+
+# Set environment variables for the build
+ENV VITE_DATADOG_APPLICATION_ID=${VITE_DATADOG_APPLICATION_ID}
+ENV VITE_DATADOG_CLIENT_TOKEN=${VITE_DATADOG_CLIENT_TOKEN}
+ENV VITE_DATADOG_SITE=${VITE_DATADOG_SITE}
+ENV VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+ENV VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+ENV VITE_APP_VERSION=${VITE_APP_VERSION}
+
 # Download additional development dependencies before building, as some projects require
-# "devDependencies" to be installed to build. If you don't need this, remove this step.
+# "devDependencies" to be installed to build.
 RUN --mount=type=bind,source=package.json,target=package.json \
     --mount=type=bind,source=package-lock.json,target=package-lock.json \
     --mount=type=cache,target=/root/.npm \
@@ -42,6 +58,7 @@ RUN --mount=type=bind,source=package.json,target=package.json \
 
 # Copy the rest of the source files into the image.
 COPY . .
+
 # Run the build script.
 RUN npm run build
 
@@ -50,8 +67,26 @@ RUN npm run build
 # where the necessary files are copied from the build stage.
 FROM base as final
 
-# Use production node environment by default.
-ENV NODE_ENV production
+# Define runtime environment variables
+ARG DD_API_KEY
+ARG DD_ENV=production
+ARG DD_SERVICE=object-recovery
+ARG DD_SITE=datadoghq.com
+ARG DD_LOGS_INTAKE_URL=https://http-intake.logs.datadoghq.com
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV DD_API_KEY=${DD_API_KEY}
+ENV DD_ENV=${DD_ENV}
+ENV DD_SERVICE=${DD_SERVICE}
+ENV DD_SITE=${DD_SITE}
+ENV DD_LOGS_INTAKE_URL=${DD_LOGS_INTAKE_URL}
+ENV DD_RUNTIME_METRICS_ENABLED=true
+ENV DD_PROFILING_ENABLED=true
+ENV DD_TRACE_ENABLED=true
+
+# Copy Datadog configuration
+COPY datadog-config.yaml /etc/datadog-agent/datadog.yaml
 
 # Run the application as a non-root user.
 USER node
@@ -64,16 +99,16 @@ COPY package.json .
 COPY --from=deps /usr/src/app/node_modules ./node_modules
 COPY --from=build /usr/src/app/dist ./dist
 
-
 # Expose the port that the application listens on.
 EXPOSE 8080
 
-# Install serve as root, using --unsafe-perm to avoid permission issues in Alpine.
+# Install serve securely
 USER root
-RUN npm install -g serve --unsafe-perm
+RUN npm install -g serve
 USER node
 
-CMD ["serve", "-s", "dist", "-l", "8080"]
+# Start the application with Datadog tracing
+CMD ["node", "-r", "dd-trace/init", "$(which serve)", "-s", "dist", "-l", "8080"]
 
-# If you have a custom Node server, comment out the three lines above and use:
-# CMD npm start
+# If you have a custom Node server, comment out the line above and use:
+# CMD ["node", "-r", "dd-trace/init", "server.js"]
