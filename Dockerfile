@@ -70,8 +70,7 @@ EXPOSE 8080
 
 # Install serve as root, specifying npm global prefix to a writable location.
 USER root
-ENV NPM_CONFIG_PREFIX=/usr/local
-RUN npm install -g serve
+RUN npm install -g serve --prefix /usr/local
 USER node
 
 CMD ["serve", "-s", "dist", "-l", "8080"]
