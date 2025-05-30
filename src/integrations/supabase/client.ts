@@ -1,7 +1,22 @@
 // Supabase client with Datadog integration
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
-import { datadogRum } from '@datadog/browser-rum';
+import { getDatadogRum } from '@/utils/datadog';
+
+// Initialize a placeholder for the Datadog RUM instance
+let datadogRum: any = {
+  addAction: () => {},
+  addError: () => {}
+};
+
+// Load the real Datadog RUM instance asynchronously
+if (typeof window !== 'undefined') {
+  getDatadogRum().then(rum => {
+    datadogRum = rum;
+  }).catch(error => {
+    console.error('Failed to load Datadog RUM:', error);
+  });
+}
 
 // Use environment variables when available, fallback to hardcoded values for development
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://zztqwjstrqmwpmcqfiqu.supabase.co";
@@ -16,12 +31,14 @@ const monitoredFetch = (url: string, options: RequestInit): Promise<Response> =>
   const urlObj = new URL(url);
   const path = urlObj.pathname;
   
-  // Add RUM custom action for API call
-  datadogRum.addAction('supabase_request', {
-    method,
-    path,
-    timestamp: new Date().toISOString()
-  });
+  // Add RUM custom action for API call if Datadog is available
+  if (datadogRum && typeof datadogRum.addAction === 'function') {
+    datadogRum.addAction('supabase_request', {
+      method,
+      path,
+      timestamp: new Date().toISOString()
+    });
+  }
   
   // Log the request to console in development
   if (import.meta.env.DEV) {
@@ -32,14 +49,16 @@ const monitoredFetch = (url: string, options: RequestInit): Promise<Response> =>
     .then(response => {
       const duration = performance.now() - startTime;
       
-      // Track successful response
-      datadogRum.addAction('supabase_response', {
-        method,
-        path,
-        status: response.status,
-        duration,
-        timestamp: new Date().toISOString()
-      });
+      // Track successful response if Datadog is available
+      if (datadogRum && typeof datadogRum.addAction === 'function') {
+        datadogRum.addAction('supabase_response', {
+          method,
+          path,
+          status: response.status,
+          duration,
+          timestamp: new Date().toISOString()
+        });
+      }
       
       // Log the response to console in development
       if (import.meta.env.DEV) {
@@ -51,13 +70,15 @@ const monitoredFetch = (url: string, options: RequestInit): Promise<Response> =>
     .catch(error => {
       const duration = performance.now() - startTime;
       
-      // Track error
-      datadogRum.addError(error, 'supabase_request', {
-        method,
-        path,
-        duration,
-        timestamp: new Date().toISOString()
-      });
+      // Track error with Datadog if available
+      if (datadogRum && typeof datadogRum.addError === 'function') {
+        datadogRum.addError(error, 'supabase_request', {
+          method,
+          path,
+          duration,
+          timestamp: new Date().toISOString()
+        });
+      }
       
       // Log the error to console
       console.error(`Supabase error: ${method} ${path}`, error);
@@ -83,15 +104,17 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // Add error handler for auth state changes
 supabase.auth.onAuthStateChange((event, session) => {
   try {
-    // Track auth events in Datadog
-    datadogRum.addAction('auth_state_change', {
-      event,
-      user: session?.user?.id,
-      timestamp: new Date().toISOString()
-    });
+    // Track auth events in Datadog if available
+    if (datadogRum && typeof datadogRum.addAction === 'function') {
+      datadogRum.addAction('auth_state_change', {
+        event,
+        user: session?.user?.id,
+        timestamp: new Date().toISOString()
+      });
+    }
     
     // Update user context in Datadog when user signs in
-    if (event === 'SIGNED_IN' && session?.user) {
+    if (event === 'SIGNED_IN' && session?.user && datadogRum && typeof datadogRum.setUser === 'function') {
       datadogRum.setUser({
         id: session.user.id,
         email: session.user.email,
@@ -100,7 +123,7 @@ supabase.auth.onAuthStateChange((event, session) => {
     }
     
     // Clear user context in Datadog when user signs out
-    if (event === 'SIGNED_OUT') {
+    if (event === 'SIGNED_OUT' && datadogRum && typeof datadogRum.setUser === 'function') {
       datadogRum.setUser({
         id: undefined,
         email: undefined,
@@ -109,6 +132,8 @@ supabase.auth.onAuthStateChange((event, session) => {
     }
   } catch (error) {
     console.error('Error handling auth state change:', error);
-    datadogRum.addError(error);
+    if (datadogRum && typeof datadogRum.addError === 'function') {
+      datadogRum.addError(error, 'auth_state_change');
+    }
   }
 });

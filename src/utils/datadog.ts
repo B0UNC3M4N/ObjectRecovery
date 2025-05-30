@@ -21,8 +21,8 @@ const mockDatadogRum = {
   removeRumGlobalContext: (key: string) => {
     console.log('Mock Datadog RUM removeRumGlobalContext called:', key);
   },
-  addError: (error: Error | string) => {
-    console.log('Mock Datadog RUM addError called:', error);
+  addError: (error: Error | string, source?: string, context?: object) => {
+    console.log('Mock Datadog RUM addError called:', error, source, context);
   },
   addAction: (name: string, context?: object) => {
     console.log('Mock Datadog RUM addAction called:', name, context);
@@ -49,20 +49,50 @@ const mockDatadogLogs = {
   }
 };
 
+// Cache for the imported modules to avoid multiple imports
+let datadogRumModule: any = null;
+let datadogLogsModule: any = null;
+
+// Safe import function that won't break builds
+const safeImport = async (modulePath: string) => {
+  // Only attempt import in browser environment
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  
+  try {
+    return await import(/* @vite-ignore */ modulePath);
+  } catch (error) {
+    console.warn(`Failed to import ${modulePath}:`, error);
+    return null;
+  }
+};
+
 // Initialize Datadog RUM (Real User Monitoring)
 export const initDatadogRUM = async (): Promise<void> => {
   // Only initialize in production or if explicitly enabled in development
   if (import.meta.env.PROD || import.meta.env.VITE_ENABLE_DATADOG === 'true') {
     try {
-      // Try to dynamically import the real Datadog RUM module
-      let datadogRum;
-      try {
-        const module = await import('@datadog/browser-rum');
-        datadogRum = module.datadogRum;
-        console.log('Using real Datadog RUM implementation');
-      } catch (importError) {
-        console.warn('Datadog RUM package not available, using mock implementation');
-        datadogRum = mockDatadogRum;
+      // Use mock implementation by default
+      let datadogRum = mockDatadogRum;
+      
+      // Only try to import the real module if we're in a browser environment
+      if (typeof window !== 'undefined') {
+        try {
+          // Use cached module if available
+          if (!datadogRumModule) {
+            // Use @vite-ignore to prevent Vite from trying to analyze this import
+            datadogRumModule = await safeImport('@datadog/browser-rum');
+          }
+          
+          if (datadogRumModule?.datadogRum) {
+            datadogRum = datadogRumModule.datadogRum;
+            console.log('Using real Datadog RUM implementation');
+          }
+        } catch (importError) {
+          console.warn('Datadog RUM package not available, using mock implementation');
+          // Continue with mock implementation
+        }
       }
       
       datadogRum.init({
@@ -88,6 +118,11 @@ export const initDatadogRUM = async (): Promise<void> => {
       });
       
       console.log('Datadog RUM initialized');
+      
+      // Export for global access if needed
+      if (typeof window !== 'undefined') {
+        (window as any).__DATADOG_RUM__ = datadogRum;
+      }
     } catch (error) {
       console.error('Failed to initialize Datadog RUM:', error);
     }
@@ -99,15 +134,26 @@ export const initDatadogLogs = async (): Promise<void> => {
   // Only initialize in production or if explicitly enabled in development
   if (import.meta.env.PROD || import.meta.env.VITE_ENABLE_DATADOG === 'true') {
     try {
-      // Try to dynamically import the real Datadog Logs module
-      let datadogLogs;
-      try {
-        const module = await import('@datadog/browser-logs');
-        datadogLogs = module.datadogLogs;
-        console.log('Using real Datadog Logs implementation');
-      } catch (importError) {
-        console.warn('Datadog Logs package not available, using mock implementation');
-        datadogLogs = mockDatadogLogs;
+      // Use mock implementation by default
+      let datadogLogs = mockDatadogLogs;
+      
+      // Only try to import the real module if we're in a browser environment
+      if (typeof window !== 'undefined') {
+        try {
+          // Use cached module if available
+          if (!datadogLogsModule) {
+            // Use @vite-ignore to prevent Vite from trying to analyze this import
+            datadogLogsModule = await safeImport('@datadog/browser-logs');
+          }
+          
+          if (datadogLogsModule?.datadogLogs) {
+            datadogLogs = datadogLogsModule.datadogLogs;
+            console.log('Using real Datadog Logs implementation');
+          }
+        } catch (importError) {
+          console.warn('Datadog Logs package not available, using mock implementation');
+          // Continue with mock implementation
+        }
       }
       
       datadogLogs.init({
@@ -120,6 +166,11 @@ export const initDatadogLogs = async (): Promise<void> => {
       });
       
       console.log('Datadog Logs initialized');
+      
+      // Export for global access if needed
+      if (typeof window !== 'undefined') {
+        (window as any).__DATADOG_LOGS__ = datadogLogs;
+      }
     } catch (error) {
       console.error('Failed to initialize Datadog Logs:', error);
     }
@@ -130,14 +181,24 @@ export const initDatadogLogs = async (): Promise<void> => {
 export const setDatadogUser = async (userId: string, userName: string, userEmail: string): Promise<void> => {
   if (import.meta.env.PROD || import.meta.env.VITE_ENABLE_DATADOG === 'true') {
     try {
-      // Try to dynamically import the real Datadog RUM module
-      let datadogRum;
-      try {
-        const module = await import('@datadog/browser-rum');
-        datadogRum = module.datadogRum;
-      } catch (importError) {
-        console.warn('Datadog RUM package not available, using mock implementation');
-        datadogRum = mockDatadogRum;
+      // Try to use the globally cached instance first
+      let datadogRum = (window as any).__DATADOG_RUM__ || mockDatadogRum;
+      
+      // If not available, try to import
+      if (datadogRum === mockDatadogRum && typeof window !== 'undefined') {
+        try {
+          // Use cached module if available
+          if (!datadogRumModule) {
+            datadogRumModule = await safeImport('@datadog/browser-rum');
+          }
+          
+          if (datadogRumModule?.datadogRum) {
+            datadogRum = datadogRumModule.datadogRum;
+          }
+        } catch (importError) {
+          console.warn('Datadog RUM package not available, using mock implementation');
+          // Continue with mock implementation
+        }
       }
       
       datadogRum.setUser({
@@ -149,4 +210,18 @@ export const setDatadogUser = async (userId: string, userName: string, userEmail
       console.error('Failed to set Datadog user:', error);
     }
   }
+};
+
+// Export a getter for the RUM instance that can be used throughout the app
+export const getDatadogRum = async () => {
+  if (typeof window !== 'undefined' && (window as any).__DATADOG_RUM__) {
+    return (window as any).__DATADOG_RUM__;
+  }
+  
+  // Try to import if not already cached
+  if (!datadogRumModule && typeof window !== 'undefined') {
+    datadogRumModule = await safeImport('@datadog/browser-rum');
+  }
+  
+  return datadogRumModule?.datadogRum || mockDatadogRum;
 };
