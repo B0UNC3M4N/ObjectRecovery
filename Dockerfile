@@ -8,7 +8,7 @@ ARG NODE_VERSION=20.12.1
 
 ################################################################################
 # Use node image for base image for all stages.
-FROM node:${NODE_VERSION}-alpine as base
+FROM node:${NODE_VERSION}-alpine AS base
 
 # Set working directory for all build stages.
 WORKDIR /usr/src/app
@@ -18,7 +18,7 @@ RUN apk add --no-cache curl
 
 ################################################################################
 # Create a stage for installing production dependencies.
-FROM base as deps
+FROM base AS deps
 
 # Download dependencies as a separate step to take advantage of Docker's caching.
 # Leverage a cache mount to /root/.npm to speed up subsequent builds.
@@ -31,7 +31,7 @@ RUN --mount=type=bind,source=package.json,target=package.json \
 
 ################################################################################
 # Create a stage for building the application.
-FROM deps as build
+FROM deps AS build
 
 # Define build arguments for environment variables
 ARG VITE_DATADOG_APPLICATION_ID
@@ -65,8 +65,7 @@ RUN npm run build
 
 ################################################################################
 # Create a new stage to run the application with minimal runtime dependencies
-# where the necessary files are copied from the build stage.
-FROM base as final
+FROM base AS final
 
 # Define runtime environment variables
 ARG DD_API_KEY
@@ -75,14 +74,14 @@ ARG DD_SERVICE=object-recovery
 ARG DD_SITE=datadoghq.com
 
 # Set environment variables
-ENV NODE_ENV=production
-ENV DD_API_KEY=${DD_API_KEY}
-ENV DD_ENV=${DD_ENV}
-ENV DD_SERVICE=${DD_SERVICE}
-ENV DD_SITE=${DD_SITE}
-ENV DD_RUNTIME_METRICS_ENABLED=true
-ENV DD_PROFILING_ENABLED=true
-ENV DD_TRACE_ENABLED=true
+ENV NODE_ENV=production \
+    DD_API_KEY=${DD_API_KEY} \
+    DD_ENV=${DD_ENV} \
+    DD_SERVICE=${DD_SERVICE} \
+    DD_SITE=${DD_SITE} \
+    DD_RUNTIME_METRICS_ENABLED=true \
+    DD_PROFILING_ENABLED=true \
+    DD_TRACE_ENABLED=true
 
 # Copy Datadog configuration
 COPY datadog-config.yaml /etc/datadog-agent/datadog.yaml
@@ -101,30 +100,5 @@ COPY --from=build /usr/src/app/dist ./dist
 # Expose the port that the application listens on.
 EXPOSE 8080
 
-# Install serve as root, using --unsafe-perm and --no-update-notifier to avoid permission issues in Alpine.
-# Install serve securely
-USER root
-#RUN npm install -g serve --unsafe-perm --no-update-notifier
-RUN mkdir -p /usr/local/lib/node_modules && \
-    chown -R node:node /usr/local/lib/node_modules && \
-    npm install -g serve --unsafe-perm --no-update-notifier
-
-RUN npm install -g serve
-USER node
-
+# Start the application with Datadog tracing using npx serve
 CMD ["npx", "serve", "-s", "dist", "-l", "8080"]
-# Start the application with Datadog tracing
-CMD ["node", "-r", "dd-trace/init", "$(which serve)", "-s", "dist", "-l", "8080"]
-
-# If you have a custom Node server, comment out the three lines above and use:
-# CMD npm start    
-
-# ... previous stages unchanged ...
-
-
-# Switch to root to install global npm package with correct permissions
-
-
-
-# If you have a custom Node server, comment out the line above and use:
-# CMD ["node", "-r", "dd-trace/init", "server.js"]
