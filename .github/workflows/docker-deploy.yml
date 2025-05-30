@@ -42,13 +42,17 @@ jobs:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_TOKEN }}
 
+      - name: Docker login success
+        if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
+        run: echo "Docker Hub login succeeded for user '${{ env.DOCKERHUB_USERNAME }}'."
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: Dockerfile
           push: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
-          tags: ${{ env.DOCKERHUB_USERNAME && format('{0}/object-recovery:latest', env.DOCKERHUB_USERNAME) }}
+          tags: dennisw22/object-recovery:latest
 
       - name: Warn about line endings (optional)
         run: |
