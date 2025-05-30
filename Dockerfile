@@ -69,8 +69,10 @@ COPY --from=build /usr/src/app/dist ./dist
 EXPOSE 8080
 
 # Run the application.
+USER root
 RUN npm install -g serve
+USER node
 CMD ["serve", "-s", "dist", "-l", "8080"]
 
-# If you have a custom Node server, comment out the two lines above and use:
+# If you have a custom Node server, comment out the three lines above and use:
 # CMD npm start
