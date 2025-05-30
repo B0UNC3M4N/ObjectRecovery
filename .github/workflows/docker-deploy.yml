@@ -54,3 +54,9 @@ jobs:
         run: |
           echo "::warning file=Dockerfile::If you see 'LF will be replaced by CRLF', it's a Git line ending warning. It does not affect Docker builds. On Windows, to avoid this warning, run:"
           echo "    git config --global core.autocrlf input"
+
+      - name: Fail if Docker login required but not set
+        if: ${{ env.DOCKERHUB_USERNAME == '' || env.DOCKERHUB_TOKEN == '' }}
+        run: |
+          echo "Docker Hub credentials are not set. Skipping Docker push."
+          exit 0
