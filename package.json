@@ -9,7 +9,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "npm test"
+    "test": "echo \"No tests specified\" && exit 0"
   },
   "dependencies": {
     "@datadog/browser-rum": "^6.7.0",
