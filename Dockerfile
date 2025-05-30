@@ -48,6 +48,7 @@ ENV VITE_DATADOG_SITE=${VITE_DATADOG_SITE}
 ENV VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
 ENV VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
 ENV VITE_APP_VERSION=${VITE_APP_VERSION}
+ENV VITE_ENABLE_DATADOG=true
 
 # Download additional development dependencies before building, as some projects require
 # "devDependencies" to be installed to build.
@@ -72,7 +73,6 @@ ARG DD_API_KEY
 ARG DD_ENV=production
 ARG DD_SERVICE=object-recovery
 ARG DD_SITE=datadoghq.com
-ARG DD_LOGS_INTAKE_URL=https://http-intake.logs.datadoghq.com
 
 # Set environment variables
 ENV NODE_ENV=production
@@ -80,7 +80,6 @@ ENV DD_API_KEY=${DD_API_KEY}
 ENV DD_ENV=${DD_ENV}
 ENV DD_SERVICE=${DD_SERVICE}
 ENV DD_SITE=${DD_SITE}
-ENV DD_LOGS_INTAKE_URL=${DD_LOGS_INTAKE_URL}
 ENV DD_RUNTIME_METRICS_ENABLED=true
 ENV DD_PROFILING_ENABLED=true
 ENV DD_TRACE_ENABLED=true

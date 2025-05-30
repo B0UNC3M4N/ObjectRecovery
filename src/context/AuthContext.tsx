@@ -17,7 +17,8 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+// Use function declaration instead of arrow function
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,7 +38,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const userData = currentSession.user?.user_metadata;
             const name = userData?.name || 'Unknown User';
             const email = currentSession.user?.email || 'unknown@example.com';
-            setDatadogUser(currentSession.user?.id || 'anonymous', name, email);
+            setDatadogUser(currentSession.user?.id || 'anonymous', name, email)
+              .catch(error => console.warn('Failed to set Datadog user:', error));
           } catch (error) {
             console.warn('Failed to set Datadog user:', error);
             // Continue with sign-in process even if Datadog fails
@@ -51,7 +53,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (event === "SIGNED_OUT") {
           // Reset Datadog user to anonymous
           try {
-            setDatadogUser('anonymous', 'Anonymous User', 'anonymous@example.com');
+            setDatadogUser('anonymous', 'Anonymous User', 'anonymous@example.com')
+              .catch(error => console.warn('Failed to reset Datadog user:', error));
           } catch (error) {
             console.warn('Failed to reset Datadog user:', error);
             // Continue with sign-out process even if Datadog fails
@@ -132,12 +135,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
-export const useAuth = () => {
+// Define the hook as a named function declaration
+export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
-};
+}

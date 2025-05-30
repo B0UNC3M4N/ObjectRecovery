@@ -38,6 +38,16 @@ DD_LOGS_INTAKE_URL=https://http-intake.logs.datadoghq.com
 
 Copy these from `.env.example` to a new `.env` file and fill in your Datadog credentials.
 
+### Required Packages
+
+The current implementation uses only the `@datadog/browser-rum` package which is already installed. If you want to add browser logs functionality, you'll need to install the additional package:
+
+```bash
+npm install @datadog/browser-logs
+```
+
+Then update the code in `src/main.tsx` and `src/integrations/supabase/client.ts` to use the logging functionality.
+
 ### Initialization
 
 Datadog is initialized in `src/main.tsx` for browser monitoring and in the Docker container for server-side monitoring.
@@ -87,12 +97,20 @@ datadogRum.addAction('button_click', { buttonId: 'submit-form' });
 datadogRum.addError(new Error('Something went wrong'), { context: 'form-submission' });
 ```
 
-## Logging
+## Advanced Logging (Optional)
 
-For logging, use:
+If you install the optional `@datadog/browser-logs` package, you can use:
 
 ```typescript
 import { datadogLogs } from '@datadog/browser-logs';
+
+// Initialize logs
+datadogLogs.init({
+  clientToken: 'your-client-token',
+  site: 'datadoghq.com',
+  service: 'object-recovery',
+  forwardErrorsToLogs: true
+});
 
 // Log information
 datadogLogs.logger.info('User completed signup', { userId: 'user-123' });
@@ -118,3 +136,11 @@ If you're not seeing data in Datadog:
 2. Verify that Datadog initialization is running (check console logs)
 3. Ensure your Datadog API keys have the correct permissions
 4. Check network requests to Datadog endpoints for any errors
+
+## Build Issues
+
+If you encounter build errors related to missing Datadog packages:
+
+1. Make sure you're only importing packages that are installed
+2. The current implementation only requires `@datadog/browser-rum`
+3. If you need logging functionality, install `@datadog/browser-logs` first
