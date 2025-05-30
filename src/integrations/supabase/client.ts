@@ -1,18 +1,21 @@
 // Supabase client with Datadog integration
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
-import { getDatadogRum } from '@/utils/datadog';
 
 // Initialize a placeholder for the Datadog RUM instance
 let datadogRum: any = {
   addAction: () => {},
-  addError: () => {}
+  addError: () => {},
+  setUser: () => {}
 };
 
 // Load the real Datadog RUM instance asynchronously
 if (typeof window !== 'undefined') {
-  getDatadogRum().then(rum => {
-    datadogRum = rum;
+  // Use a dynamic import to avoid build issues
+  import('../../utils/datadog').then(({ getDatadogRum }) => {
+    getDatadogRum().then(rum => {
+      datadogRum = rum;
+    });
   }).catch(error => {
     console.error('Failed to load Datadog RUM:', error);
   });

@@ -101,13 +101,30 @@ COPY --from=build /usr/src/app/dist ./dist
 # Expose the port that the application listens on.
 EXPOSE 8080
 
+# Install serve as root, using --unsafe-perm and --no-update-notifier to avoid permission issues in Alpine.
 # Install serve securely
 USER root
+#RUN npm install -g serve --unsafe-perm --no-update-notifier
+RUN mkdir -p /usr/local/lib/node_modules && \
+    chown -R node:node /usr/local/lib/node_modules && \
+    npm install -g serve --unsafe-perm --no-update-notifier
+
 RUN npm install -g serve
 USER node
 
+CMD ["npx", "serve", "-s", "dist", "-l", "8080"]
 # Start the application with Datadog tracing
 CMD ["node", "-r", "dd-trace/init", "$(which serve)", "-s", "dist", "-l", "8080"]
+
+# If you have a custom Node server, comment out the three lines above and use:
+# CMD npm start    
+
+# ... previous stages unchanged ...
+
+
+# Switch to root to install global npm package with correct permissions
+
+
 
 # If you have a custom Node server, comment out the line above and use:
 # CMD ["node", "-r", "dd-trace/init", "server.js"]

@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
-import { datadogPlugin } from "./vite-plugins/datadog-plugin";
+import { datadogMockPlugin } from "./vite-plugins/datadog-mock-plugin";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -11,8 +11,9 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
   },
   plugins: [
+    // This plugin must come before react() to intercept imports
+    datadogMockPlugin(),
     react(),
-    datadogPlugin(),
     mode === 'development' &&
     componentTagger(),
   ].filter(Boolean),
@@ -22,25 +23,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
-    // Improve chunk splitting to isolate Datadog dependencies
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          // Put Datadog packages in a separate chunk
-          datadog: ['@datadog/browser-logs', '@datadog/browser-rum'],
-          // Put React in its own chunk
-          vendor: ['react', 'react-dom'],
-        },
-      },
-    },
-    // Ensure Datadog packages are properly tree-shaken
-    commonjsOptions: {
-      include: [/node_modules/],
-      extensions: ['.js', '.cjs'],
-    },
-  },
-  optimizeDeps: {
-    // Ensure Datadog packages are pre-bundled for development
-    include: ['@datadog/browser-logs', '@datadog/browser-rum'],
+    // Use our mock implementation instead of marking as external
+    // This ensures the build succeeds without trying to resolve the actual packages
   },
 }));
