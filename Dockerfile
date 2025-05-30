@@ -68,8 +68,9 @@ COPY --from=build /usr/src/app/dist ./dist
 # Expose the port that the application listens on.
 EXPOSE 8080
 
-# Install serve as root, then switch to node user for running the app.
+# Install serve as root, specifying npm global prefix to a writable location.
 USER root
+ENV NPM_CONFIG_PREFIX=/usr/local
 RUN npm install -g serve
 USER node
 
